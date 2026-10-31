@@ -4,6 +4,19 @@ options:
 settings:
   base:
     SWIFT_VERSION: '5.0'
+schemes:
+  PhoneTouchpad:
+    build:
+      targets:
+        PhoneTouchpad: all
+    run:
+      config: Debug
+  TouchpadReceiver:
+    build:
+      targets:
+        TouchpadReceiver: all
+    run:
+      config: Debug
 targets:
   PhoneTouchpad:
     type: application
