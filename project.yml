@@ -1,0 +1,40 @@
+name: PhoneTouchpad
+options:
+  bundleIdPrefix: dev.phonetouchpad
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+targets:
+  PhoneTouchpad:
+    type: application
+    platform: iOS
+    deploymentTarget: '16.0'
+    sources: [iOS, Shared]
+    info:
+      path: iOS/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: 连接你的 Mac，将手机用作触控板。
+        NSCameraUsageDescription: 扫描 Mac 配对二维码，建立加密触控板连接。
+        NSBonjourServices: ["_phonetouchpad._tcp"]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.phonetouchpad.ios
+        TARGETED_DEVICE_FAMILY: '1,2'
+  TouchpadReceiver:
+    type: application
+    platform: macOS
+    deploymentTarget: '13.0'
+    sources: [Mac, Shared]
+    info:
+      path: Mac/Info.plist
+      properties:
+        NSLocalNetworkUsageDescription: 接收手机触控板操作。
+        NSBonjourServices: ["_phonetouchpad._tcp"]
+        LSUIElement: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.phonetouchpad.receiver
+        ENABLE_APP_SANDBOX: NO
