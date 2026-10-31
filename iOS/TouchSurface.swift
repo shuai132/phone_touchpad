@@ -16,6 +16,7 @@ struct TouchSurface: UIViewRepresentable {
         view.engine.tapToDrag = tapToDrag
         view.engine.threeFingerMode = threeFingerDrag ? .drag : .swipe
         view.engine.emit = { [weak view] kind, x, y, fingers in
+            view?.recordAction(kind)
             emit(kind, x, y, fingers, view?.sampleTime ?? ProcessInfo.processInfo.systemUptime)
             if kind == .click || kind == .down { view?.clickFeedback() }
         }
@@ -33,14 +34,42 @@ final class PadView: UIView {
     private var holdTimer: Timer?
     private var active = false
     private var previousSize: CGSize?
+    #if DEBUG
+    private var diagnosticActions: [String: Int] = [:]
+    private var diagnosticMaximum = 0
+    private var diagnosticFrames = 0
+    private var diagnosticStart = 0.0
+    private static let diagnosticQueue = DispatchQueue(label: "touchpad.input-diagnostics")
+    #endif
+    func recordAction(_ kind: InputPacket.Kind) {
+        #if DEBUG
+        diagnosticActions[kind.rawValue, default: 0] += 1
+        #endif
+    }
+    private func saveDiagnostics(reason: String) {
+        #if DEBUG
+        guard diagnosticFrames > 0 else { return }
+        // Only the most recent gesture summary is kept; no coordinates, keys or host names.
+        let report: [String: Any] = ["reason": reason, "maximumFingers": diagnosticMaximum,
+            "frames": diagnosticFrames, "duration": max(0, sampleTime - diagnosticStart),
+            "actions": diagnosticActions, "nativeTransforms": engine.nativeTransforms,
+            "threeFingerDrag": engine.threeFingerMode == .drag]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]),
+              let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+        Self.diagnosticQueue.async {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try? bytes.write(to: directory.appendingPathComponent("input-diagnostics.json"), options: .atomic)
+        }
+        #endif
+    }
     func setActive(_ value: Bool) {
-        if active && !value { reset() }
+        if active && !value { reset(reason: "inactive") }
         active = value; isUserInteractionEnabled = value
     }
-    func reset() {
+    func reset(reason: String = "reset") {
         holdTimer?.invalidate(); holdTimer = nil
         sampleTime = ProcessInfo.processInfo.systemUptime
-        touches.removeAll(); lastTouchFrame = nil; engine.cancel()
+        touches.removeAll(); lastTouchFrame = nil; engine.cancel(); saveDiagnostics(reason: reason)
     }
     private func startHoldTimer() {
         guard holdTimer == nil else { return }
@@ -58,7 +87,7 @@ final class PadView: UIView {
         super.layoutSubviews()
         if let previousSize, previousSize != bounds.size {
             // Touch locations from different layouts must not form one gesture.
-            reset()
+            reset(reason: "layoutChanged")
         }
         previousSize = bounds.size
     }
@@ -69,6 +98,9 @@ final class PadView: UIView {
         }
     }
     private func consume(_ frame: TouchFrame) {
+        #if DEBUG
+        diagnosticFrames += 1; diagnosticMaximum = max(diagnosticMaximum, frame.points.count)
+        #endif
         sampleTime = frame.time; engine.update(frame.points, at: frame.time); lastTouchFrame = frame
     }
     private func snapshot(at time: Double) {
@@ -87,6 +119,12 @@ final class PadView: UIView {
         for frame in TouchFrameSampler.frames(from: lastTouchFrame, to: latest, trajectories: trajectories) { consume(frame) }
     }
     override func touchesBegan(_ new: Set<UITouch>, with event: UIEvent?) {
+        #if DEBUG
+        if touches.isEmpty {
+            diagnosticActions = [:]; diagnosticMaximum = 0; diagnosticFrames = 0
+            diagnosticStart = event?.timestamp ?? ProcessInfo.processInfo.systemUptime
+        }
+        #endif
         feedback.prepare()
         for touch in new { nextID += 1; touches[ObjectIdentifier(touch)] = (nextID, touch) }
         snapshot(at: event?.timestamp ?? ProcessInfo.processInfo.systemUptime)
@@ -100,9 +138,10 @@ final class PadView: UIView {
         replayMotion(event: event)
         for touch in ended { touches.removeValue(forKey: ObjectIdentifier(touch)) }
         snapshot(at: event?.timestamp ?? ProcessInfo.processInfo.systemUptime)
+        if touches.isEmpty { saveDiagnostics(reason: "ended") }
         if touches.isEmpty && !engine.needsClock { holdTimer?.invalidate(); holdTimer = nil }
     }
     override func touchesCancelled(_ cancelled: Set<UITouch>, with event: UIEvent?) {
-        reset()
+        reset(reason: "systemCancelled")
     }
 }

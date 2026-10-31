@@ -34,6 +34,7 @@ struct ReceiverMenu: View {
                 NSPasteboard.general.setString(receiver.code, forType: .string)
             }
             Text(receiver.status)
+            Text("最近收到：\(receiver.lastGesture)").font(.caption).foregroundStyle(.secondary)
             Text(NativeGestures.supported ? "原生缩放 / 旋转：实验性支持" : "此系统不支持原生缩放 / 旋转").font(.caption).foregroundStyle(.secondary)
             Text("用手机 Touchpad 扫描二维码连接").font(.caption)
             Text("指针速度")

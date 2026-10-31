@@ -10,6 +10,7 @@ final class Receiver: ObservableObject {
     @Published var status = "等待手机连接"
     @Published private(set) var boundPort: NWEndpoint.Port?
     @Published private(set) var connected = false
+    @Published private(set) var lastGesture = "尚未收到多指操作"
     private let listenPort: NWEndpoint.Port
     private let advertise: Bool
     private let preferences: UserDefaults
@@ -245,6 +246,7 @@ final class Receiver: ObservableObject {
         case .down: dragging = true; mouse(.leftMouseDown)
         case .up, .reset: release()
         case .scrollBegin:
+            lastGesture = "双指滚动"
             cancelScroll(); stopMomentum(); firstScroll = true; scrolling = true
         case .scroll:
             guard scrolling else { return }
@@ -254,14 +256,15 @@ final class Receiver: ObservableObject {
         case .scrollEnd:
             guard scrolling else { return }
             scroll(x: 0, y: 0, phase: 4); scrolling = false; startMomentum(at: p.time ?? ProcessInfo.processInfo.systemUptime)
-        case .smartZoom: stopMomentum(); native.send(.smartZoom, phase: .none)
-        case .zoomBegin: cancelScroll(); stopMomentum(); native.send(.zoom, phase: .began)
+        case .smartZoom: lastGesture = "双指双击智能缩放"; stopMomentum(); native.send(.smartZoom, phase: .none)
+        case .zoomBegin: lastGesture = "双指捏合缩放"; cancelScroll(); stopMomentum(); native.send(.zoom, phase: .began)
         case .zoom: native.send(.zoom, value: min(max(p.x, -0.95), 3), phase: .changed)
         case .zoomEnd: native.send(.zoom, phase: .ended)
-        case .rotateBegin: cancelScroll(); stopMomentum(); native.send(.rotate, phase: .began)
+        case .rotateBegin: lastGesture = "双指旋转"; cancelScroll(); stopMomentum(); native.send(.rotate, phase: .began)
         case .rotate: native.send(.rotate, value: min(max(p.x, -180), 180), phase: .changed)
         case .rotateEnd: native.send(.rotate, phase: .ended)
         case .swipe:
+            lastGesture = "\(p.fingers)指\(abs(p.x) > abs(p.y) ? (p.x > 0 ? "向右" : "向左") : (p.y < 0 ? "向上" : "向下"))滑动（快捷键）"
             if abs(p.x) > abs(p.y) { key(p.x > 0 ? 123 : 124, flags: .maskControl) }
             else { key(p.y < 0 ? 126 : 125, flags: .maskControl) }
         default: break
