@@ -26,6 +26,8 @@ swiftc Mac/NativeGestures.swift Scripts/NativeGestureEncodingCheck.swift -o "$ch
 "$check_dir/nativeencoding"
 swiftc -typecheck Shared/*.swift Mac/*.swift
 swiftc -typecheck Shared/*.swift iOS/Connection.swift
+swiftc Shared/*.swift iOS/Connection.swift Mac/Receiver.swift Mac/NativeGestures.swift Scripts/PointerBurstCheck.swift -o "$check_dir/pointerburst"
+"$check_dir/pointerburst"
 swiftc Shared/*.swift iOS/Connection.swift Mac/Receiver.swift Mac/NativeGestures.swift Scripts/PairingRejectionCheck.swift -o "$check_dir/rejections"
 "$check_dir/rejections"
 swiftc Shared/*.swift iOS/Connection.swift Scripts/ConnectionCheck.swift -o "$check_dir/connection"

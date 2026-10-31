@@ -31,6 +31,9 @@ final class Receiver: ObservableObject {
         didSet { preferences.set(naturalScrolling, forKey: "naturalScrolling") }
     }
     private var pointer = PointerMotion()
+    // Posted events can still be queued when the next touch sample arrives.
+    // Accumulate their destination instead of rereading a lagging OS position.
+    private var cursorPosition: CGPoint?
     private var native = NativeGestures()
     private var watchdog: DispatchSourceTimer?
     private var lastReceived = 0.0
@@ -200,12 +203,12 @@ final class Receiver: ObservableObject {
         }
     }
     private func mouse(_ type: CGEventType, button: CGMouseButton = .left, count: Int64 = 1) {
-        guard let position = CGEvent(source: nil)?.location else { return }
+        guard let position = cursorPosition ?? CGEvent(source: nil)?.location else { return }
         let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: position, mouseButton: button)
         event?.setIntegerValueField(.mouseEventClickState, value: count)
         emit(event)
     }
-    private func release() { native.cancel(); cancelScroll(); pointer.reset(); stopMomentum(); if dragging { mouse(.leftMouseUp); dragging = false } }
+    private func release() { native.cancel(); cancelScroll(); pointer.reset(); stopMomentum(); if dragging { mouse(.leftMouseUp); dragging = false }; cursorPosition = nil }
     private func key(_ code: CGKeyCode, flags: CGEventFlags) {
         for down in [true, false] {
             let e = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
@@ -215,9 +218,9 @@ final class Receiver: ObservableObject {
     private func apply(_ p: InputPacket) {
         guard p.x.isFinite, p.y.isFinite, abs(p.x) < 10000, abs(p.y) < 10000 else { return }
         switch p.kind {
-        case .contact: cancelScroll(); stopMomentum(); pointer.reset()
+        case .contact: cancelScroll(); stopMomentum(); pointer.reset(); cursorPosition = CGEvent(source: nil)?.location
         case .move:
-            guard var point = CGEvent(source: nil)?.location else { return }
+            guard var point = cursorPosition ?? CGEvent(source: nil)?.location else { return }
             pointer.sensitivity = pointerSpeed; pointer.acceleration = pointerAcceleration
             let (dx, dy) = pointer.translate(x: p.x, y: p.y, at: p.time ?? ProcessInfo.processInfo.systemUptime)
             point.x += dx; point.y += dy
@@ -226,11 +229,12 @@ final class Receiver: ObservableObject {
             // Quartz and AppKit have different Y origins; the main screen anchors conversion.
             let height = NSScreen.screens.first?.frame.height ?? bounds.height
             point.y = min(max(point.y, height - bounds.maxY), height - bounds.minY - 1)
+            cursorPosition = point
             emit(CGEvent(mouseEventSource: nil, mouseType: dragging ? .leftMouseDragged : .mouseMoved, mouseCursorPosition: point, mouseButton: .left))
         case .click:
             let right = p.fingers == 2
             let now = ProcessInfo.processInfo.systemUptime
-            let position = CGEvent(source: nil)?.location ?? .zero
+            let position = cursorPosition ?? CGEvent(source: nil)?.location ?? .zero
             let button: CGMouseButton = right ? .right : .left
             if now - lastClickTime <= NSEvent.doubleClickInterval && button == lastClickButton && hypot(position.x - lastClickPosition.x, position.y - lastClickPosition.y) < 4 {
                 clickCount += 1
