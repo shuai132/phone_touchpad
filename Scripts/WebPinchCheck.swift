@@ -49,7 +49,8 @@ import Network
             return (result["phases"] as? [UInt])?.contains(NSEvent.Phase.ended.rawValue) == true
         }
         print("Web view result:", result)
-        precondition((result["magnification"] as? Double ?? 1) > 1.1, "Native pinch phases arrived but actual web magnification did not change")
+        let expected = pow(1.5, receiver.zoomSensitivity)
+        precondition(abs((result["magnification"] as? Double ?? 1) - expected) < 0.005, "Actual web magnification did not match configured pinch sensitivity")
         print("Real gesture engine/client/TLS/receiver pinch magnified a WKWebView")
     }
 }
