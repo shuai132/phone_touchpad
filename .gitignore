@@ -1,0 +1,8 @@
+.build/
+DerivedData/
+*.xcodeproj/
+xcuserdata/
+.DS_Store
+android/.gradle/
+android/**/build/
+android/local.properties
