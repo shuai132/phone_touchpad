@@ -97,12 +97,15 @@ final class Receiver: ObservableObject {
         pointerAcceleration = preferences.object(forKey: "pointerAcceleration") as? Bool ?? true
         naturalScrolling = preferences.object(forKey: "naturalScrolling") as? Bool ?? true
         accessibilityGranted = permissionCheck()
+        recordPermissionState()
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + 1, repeating: 1)
         timer.setEventHandler { [weak self] in
             guard let self else { return }
             let granted = self.permissionCheck()
-            if granted != self.accessibilityGranted { self.accessibilityGranted = granted }
+            if granted != self.accessibilityGranted {
+                self.accessibilityGranted = granted; self.recordPermissionState()
+            }
             guard let id = self.authenticated, let c = self.clients[id] else { return }
             if ProcessInfo.processInfo.systemUptime - self.lastReceived > 5 {
                 self.close(c, id: id); self.status = "连接中断，已释放输入"
@@ -110,6 +113,10 @@ final class Receiver: ObservableObject {
         }
         watchdog = timer; timer.resume()
         startListener()
+    }
+    private func recordPermissionState() {
+        preferences.set(["processID": ProcessInfo.processInfo.processIdentifier,
+                         "accessibilityGranted": accessibilityGranted] as [String: Any], forKey: "runtimePermission")
     }
     deinit {
         watchdog?.cancel(); release(); listener?.cancel()
