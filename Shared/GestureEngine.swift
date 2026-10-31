@@ -4,6 +4,7 @@ struct TouchPoint: Equatable {
     var id: Int
     var x: Double
     var y: Double
+    var pressure: Double? = nil
 }
 
 /// Operates on complete touch snapshots, independent of UIKit delivery order.
@@ -13,6 +14,11 @@ struct GestureEngine {
     var tapToClick = true
     var tapToDrag = false
     var nativeTransforms = false
+    var pressureToClick = true
+    var holdToClick = false
+    var pressThreshold = 0.55
+    private var pressing = false
+    private var pressUsed = false
     var emit: (InputPacket.Kind, Double, Double, Int) -> Void = { _, _, _, _ in }
     private var previous: [TouchPoint] = []
     private var origin: [TouchPoint] = []
@@ -77,7 +83,14 @@ struct GestureEngine {
     private var pendingTwoTap: (time: Double, point: TouchPoint)?
     private var smartZoomCandidate = false
     private var lastTwoPoint = TouchPoint(id: 0, x: 0, y: 0)
-    var needsClock: Bool { tapDragCandidate || pendingTwoTap != nil }
+    var needsClock: Bool { tapDragCandidate || pendingTwoTap != nil || holdEligible }
+    private var holdEligible: Bool {
+        holdToClick && maximum == 1 && previous.count == 1 && !moved && !pressUsed && !tapDragCandidate && !tapDragging && previous[0].pressure == nil
+    }
+    private mutating func beginPress() {
+        pressing = true; pressUsed = true; moved = true; lastTap = nil
+        emit(.down, 0, 0, 1)
+    }
     private mutating func flushTwoTap() {
         if pendingTwoTap != nil { emit(.click, 0, 0, 2); pendingTwoTap = nil }
         smartZoomCandidate = false
@@ -88,6 +101,7 @@ struct GestureEngine {
         if tapDragCandidate && previous.count == 1 && time - began >= 0.2 {
             beginTapDrag()
         }
+        if holdEligible && time - began >= 0.35 { beginPress() }
     }
     private mutating func beginTapDrag() {
         tapDragCandidate = false; tapDragging = true; moved = true
@@ -100,6 +114,7 @@ struct GestureEngine {
         guard !points.isEmpty || !previous.isEmpty else { return }
         if previous.isEmpty && !points.isEmpty {
             began = time; maximum = 0; moved = false; swiped = false
+            pressing = false; pressUsed = false
             if tapToClick && tapToDrag && points.count == 1, let lastTap {
                 tapDragCandidate = time - lastTap.time <= 0.35 && time >= lastTap.time && hypot(points[0].x - lastTap.point.x, points[0].y - lastTap.point.y) <= 40
             } else { tapDragCandidate = false }
@@ -110,6 +125,10 @@ struct GestureEngine {
         let oldIDs = Set(previous.map(\.id)), newIDs = Set(points.map(\.id))
         let idsChanged = oldIDs != newIDs
         let addedFinger = !newIDs.subtracting(oldIDs).isEmpty
+        if points.isEmpty && holdEligible && time - began >= 0.35 { beginPress() }
+        if pressing && (points.count != 1 || idsChanged) {
+            emit(.up, 0, 0, 1); pressing = false; moved = true
+        }
         if idsChanged { endTransforms() }
         // Wait for the last finger on staggered lift-off; a long remaining hold suppresses momentum by age.
         if scrolling && (points.isEmpty || points.count > 2 || addedFinger || (points.count == 2 && idsChanged)) {
@@ -123,7 +142,7 @@ struct GestureEngine {
         }
         if points.count > 1 { tapDragCandidate = false }
         if points.isEmpty {
-            if tapToClick && maximum <= 2 && !moved && time - began < 0.3 {
+            if tapToClick && maximum <= 2 && !moved && !pressUsed && time - began < (holdToClick ? 0.35 : 0.3) {
                 if maximum == 2 && nativeTransforms {
                     if smartZoomCandidate && pendingTwoTap != nil {
                         pendingTwoTap = nil; smartZoomCandidate = false; emit(.smartZoom, 0, 0, 2)
@@ -141,6 +160,13 @@ struct GestureEngine {
         }
         if points.count == 2 {
             lastTwoPoint = TouchPoint(id: 0, x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2)
+        }
+        var releasePressAfterMotion = false
+        if pressureToClick && maximum == 1 && points.count == 1 && !tapDragCandidate && !tapDragging,
+           let pressure = points[0].pressure, pressure.isFinite, (0...1).contains(pressure) {
+            let threshold = min(max(pressThreshold, 0.2), 0.9)
+            if !pressing && pressure >= threshold { beginPress() }
+            else if pressing && pressure <= threshold * 0.6 { releasePressAfterMotion = true }
         }
         if idsChanged {
             if points.count == 2 && maximum == 2, let pendingTwoTap {
@@ -189,6 +215,7 @@ struct GestureEngine {
             }
         }
         previous = points
+        if releasePressAfterMotion { emit(.up, 0, 0, 1); pressing = false }
     }
     mutating func cancel() {
         emit(.reset, 0, 0, 1)
@@ -196,6 +223,7 @@ struct GestureEngine {
         scrolling = false; dragging = false; moved = false; swiped = false
         zooming = false; rotating = false; totalRotation = 0; pairMode = .undecided
         tapDragCandidate = false; tapDragging = false; lastTap = nil
+        pressing = false; pressUsed = false
         pendingTwoTap = nil; smartZoomCandidate = false
     }
 }

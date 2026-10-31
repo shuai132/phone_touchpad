@@ -2,7 +2,7 @@ package dev.phonetouchpad.core
 
 import kotlin.math.*
 
-data class TouchPoint(val id: Int, val x: Double, val y: Double)
+data class TouchPoint(val id: Int, val x: Double, val y: Double, val pressure: Double? = null)
 
 /** Native touch snapshots use the same gesture rules and wire phases as the iOS engine. */
 class GestureEngine(var emit: (Packet) -> Unit = {}) {
@@ -12,6 +12,11 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
     var tapToClick = true
     var tapToDrag = false
     var nativeTransforms = false
+    var pressureToClick = true
+    var holdToClick = false
+    var pressThreshold = 0.55
+    private var pressing = false
+    private var pressUsed = false
     private var previous = emptyList<TouchPoint>()
     private var origin = emptyList<TouchPoint>()
     private var began = 0.0
@@ -32,7 +37,9 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
     private var smartZoomCandidate = false
     private var lastTwoPoint = TouchPoint(0, 0.0, 0.0)
     private var clock = 0.0
-    val needsClock get() = tapDragCandidate || pendingTwoTap != null
+    private val holdEligible get() = holdToClick && maximum == 1 && previous.size == 1 && !moved && !pressUsed && !tapDragCandidate && !tapDragging && previous[0].pressure == null
+    val needsClock get() = tapDragCandidate || pendingTwoTap != null || holdEligible
+    private fun beginPress() { pressing = true; pressUsed = true; moved = true; lastTap = null; output("down") }
     private fun output(kind: String, x: Double = 0.0, y: Double = 0.0, fingers: Int = 1) = emit(Packet(kind, x, y, fingers, clock))
     private fun flushTwoTap() {
         if (pendingTwoTap != null) { output("click", fingers = 2); pendingTwoTap = null }
@@ -42,6 +49,7 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
         clock = time
         pendingTwoTap?.let { if (time - it.time >= 0.28 && (!smartZoomCandidate || time - began >= 0.3)) flushTwoTap() }
         if (tapDragCandidate && previous.size == 1 && time - began >= 0.2) beginTapDrag()
+        if (holdEligible && time - began >= 0.35) beginPress()
     }
     private fun beginTapDrag() {
         tapDragCandidate = false; tapDragging = true; moved = true; output("down")
@@ -92,7 +100,7 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
         val points = snapshot.sortedBy { it.id }
         if (points.isEmpty() && previous.isEmpty()) return
         if (previous.isEmpty() && points.isNotEmpty()) {
-            began = time; maximum = 0; moved = false; swiped = false
+            began = time; maximum = 0; moved = false; swiped = false; pressing = false; pressUsed = false
             tapDragCandidate = tapToClick && tapToDrag && points.size == 1 && lastTap?.let {
                 time >= it.time && time - it.time <= 0.35 && hypot(points[0].x - it.point.x, points[0].y - it.point.y) <= 40
             } == true
@@ -101,13 +109,15 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
         maximum = max(maximum, points.size)
         val oldIds = previous.map { it.id }.toSet(); val newIds = points.map { it.id }.toSet()
         val changed = oldIds != newIds; val added = (newIds - oldIds).isNotEmpty()
+        if (points.isEmpty() && holdEligible && time - began >= 0.35) beginPress()
+        if (pressing && (points.size != 1 || changed)) { output("up"); pressing = false; moved = true }
         if (changed) endTransforms()
         if (scrolling && (points.isEmpty() || points.size > 2 || added || (points.size == 2 && changed))) { output("scrollEnd", fingers = 2); scrolling = false }
         if (dragging && (points.size != 3 || changed)) { output("up", fingers = 3); dragging = false }
         if (tapDragging && (points.size != 1 || changed)) { output("up"); tapDragging = false; moved = true }
         if (points.size > 1) tapDragCandidate = false
         if (points.isEmpty()) {
-            if (tapToClick && maximum <= 2 && !moved && time - began < 0.3) {
+            if (tapToClick && maximum <= 2 && !moved && !pressUsed && time - began < (if (holdToClick) 0.35 else 0.3)) {
                 if (maximum == 2 && nativeTransforms) {
                     if (smartZoomCandidate && pendingTwoTap != null) { pendingTwoTap = null; smartZoomCandidate = false; output("smartZoom", fingers = 2) }
                     else { flushTwoTap(); pendingTwoTap = Tap(time, lastTwoPoint) }
@@ -116,6 +126,14 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
             tapDragCandidate = false; previous = emptyList(); origin = emptyList(); return
         }
         if (points.size == 2) lastTwoPoint = TouchPoint(0, points.sumOf { it.x } / 2, points.sumOf { it.y } / 2)
+        var releasePressAfterMotion = false
+        if (pressureToClick && maximum == 1 && points.size == 1 && !tapDragCandidate && !tapDragging) {
+            points[0].pressure?.takeIf { it.isFinite() && it in 0.0..1.0 }?.let { pressure ->
+                val threshold = pressThreshold.coerceIn(0.2, 0.9)
+                if (!pressing && pressure >= threshold) beginPress()
+                else if (pressing && pressure <= threshold * 0.6) releasePressAfterMotion = true
+            }
+        }
         if (changed) {
             pendingTwoTap?.let { if (points.size == 2 && maximum == 2) smartZoomCandidate = time - it.time <= 0.28 && hypot(lastTwoPoint.x - it.point.x, lastTwoPoint.y - it.point.y) <= 40 }
             if (previous.isNotEmpty() && added) output("contact", fingers = points.size)
@@ -139,11 +157,13 @@ class GestureEngine(var emit: (Packet) -> Unit = {}) {
             if (hypot(x, y) > 60 && hypot(x, y) >= averageTravel * 0.75) { output("swipe", x, y, points.size); swiped = true }
         }
         previous = points
+        if (releasePressAfterMotion) { output("up"); pressing = false }
     }
     fun cancel(time: Double = clock) {
         clock = time; output("reset"); previous = emptyList(); origin = emptyList(); maximum = 0
         scrolling = false; dragging = false; moved = false; swiped = false
         zooming = false; rotating = false; totalRotation = 0.0; pairMode = PairMode.UNDECIDED
+        pressing = false; pressUsed = false
         tapDragCandidate = false; tapDragging = false; lastTap = null; pendingTwoTap = null; smartZoomCandidate = false
     }
 }

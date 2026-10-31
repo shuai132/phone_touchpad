@@ -17,6 +17,8 @@ class GestureParityTest {
             engine.nativeTransforms = options.getBoolean("native")
             engine.tapToDrag = options.getBoolean("tapDrag")
             engine.tapToClick = options.getBoolean("tapClick")
+            engine.holdToClick = options.getBoolean("hold")
+            engine.pressureToClick = options.getBoolean("pressure")
             engine.threeFingerMode = if (options.getBoolean("threeDrag")) GestureEngine.ThreeFingerMode.DRAG else GestureEngine.ThreeFingerMode.SWIPE
             val steps = trace.getJSONArray("steps")
             for (i in 0 until steps.length()) {
@@ -26,7 +28,7 @@ class GestureParityTest {
                     "cancel" -> engine.cancel(time)
                     else -> {
                         val points = step.getJSONArray("points")
-                        engine.update((0 until points.length()).map { p -> val point = points.getJSONObject(p); TouchPoint(point.getInt("id"), point.getDouble("x"), point.getDouble("y")) }, time)
+                        engine.update((0 until points.length()).map { p -> val point = points.getJSONObject(p); TouchPoint(point.getInt("id"), point.getDouble("x"), point.getDouble("y"), if (point.has("pressure")) point.getDouble("pressure") else null) }, time)
                     }
                 }
             }

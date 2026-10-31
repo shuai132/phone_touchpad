@@ -8,6 +8,7 @@ struct TouchSample {
     var time: Double
     var x: Double
     var y: Double
+    var pressure: Double? = nil
 }
 struct TouchTrajectory {
     var id: Int
@@ -36,17 +37,21 @@ enum TouchFrameSampler {
                     times.insert(sample.time)
                 }
             }
-            byTime[previous.time] = TouchSample(time: previous.time, x: start.x, y: start.y)
-            byTime[latest.time] = TouchSample(time: latest.time, x: point.x, y: point.y)
+            byTime[previous.time] = TouchSample(time: previous.time, x: start.x, y: start.y, pressure: start.pressure)
+            byTime[latest.time] = TouchSample(time: latest.time, x: point.x, y: point.y, pressure: point.pressure)
             tracks[point.id] = byTime.values.sorted { $0.time < $1.time }
         }
         return times.sorted().map { time in
             let points = latest.points.map { point -> TouchPoint in
                 guard let track = tracks[point.id], let right = track.firstIndex(where: { $0.time >= time }) else { return point }
-                if right == 0 { return TouchPoint(id: point.id, x: track[0].x, y: track[0].y) }
+                if right == 0 { return TouchPoint(id: point.id, x: track[0].x, y: track[0].y, pressure: track[0].pressure) }
                 let a = track[right - 1], b = track[right]
                 let progress = (time - a.time) / (b.time - a.time)
-                return TouchPoint(id: point.id, x: a.x + (b.x - a.x) * progress, y: a.y + (b.y - a.y) * progress)
+                let pressure: Double?
+                if let ap = a.pressure, let bp = b.pressure, ap.isFinite, bp.isFinite {
+                    pressure = ap + (bp - ap) * progress
+                } else { pressure = nil }
+                return TouchPoint(id: point.id, x: a.x + (b.x - a.x) * progress, y: a.y + (b.y - a.y) * progress, pressure: pressure)
             }
             return TouchFrame(time: time, points: points)
         }

@@ -20,7 +20,9 @@
     ],
     "name" : "singleTap",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -91,7 +93,9 @@
     ],
     "name" : "staggeredScroll",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -210,7 +214,9 @@
     ],
     "name" : "pinch",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -302,7 +308,9 @@
     ],
     "name" : "smartZoom",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -384,7 +392,9 @@
     ],
     "name" : "rightClickDelay",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -475,7 +485,9 @@
     ],
     "name" : "tapDragHold",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : true,
       "threeDrag" : false
@@ -574,7 +586,9 @@
     ],
     "name" : "cancelScroll",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -624,6 +638,644 @@
   {
     "expected" : [
       {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "move",
+        "time" : 0.2,
+        "version" : 1,
+        "x" : 12,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.3,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "pressureHysteresisDrag",
+    "options" : {
+      "hold" : false,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.1,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.6,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0.1
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.5,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0.12
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 12,
+            "y" : 0
+          }
+        ],
+        "time" : 0.2
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.3,
+            "x" : 12,
+            "y" : 0
+          }
+        ],
+        "time" : 0.3
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.4
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0.2,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.25,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "pressureRepress",
+    "options" : {
+      "hold" : false,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.6,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.3,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0.1
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0.2
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.25
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "move",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 15,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "pressureReleaseMotion",
+    "options" : {
+      "hold" : false,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.2,
+            "x" : 15,
+            "y" : 0
+          }
+        ],
+        "time" : 0.1
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.2
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0.36,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.36,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "holdWithoutTimerTick",
+    "options" : {
+      "hold" : true,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.36
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "reset",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "pressureCancel",
+    "options" : {
+      "hold" : false,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "cancel",
+        "points" : [
+
+        ],
+        "time" : 0.1
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0.36,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "move",
+        "time" : 0.4,
+        "version" : 1,
+        "x" : 15,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.5,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "holdPressDrag",
+    "options" : {
+      "hold" : true,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : false,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "advance",
+        "points" : [
+
+        ],
+        "time" : 0.36
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "x" : 15,
+            "y" : 0
+          }
+        ],
+        "time" : 0.4
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.5
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "move",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 20,
+        "y" : 0
+      }
+    ],
+    "name" : "movingCannotHoldPress",
+    "options" : {
+      "hold" : true,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "x" : 20,
+            "y" : 0
+          }
+        ],
+        "time" : 0.1
+      },
+      {
+        "action" : "advance",
+        "points" : [
+
+        ],
+        "time" : 0.8
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.9
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
+        "fingers" : 1,
+        "kind" : "contact",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "down",
+        "time" : 0,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 1,
+        "kind" : "up",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      },
+      {
+        "fingers" : 2,
+        "kind" : "contact",
+        "time" : 0.1,
+        "version" : 1,
+        "x" : 0,
+        "y" : 0
+      }
+    ],
+    "name" : "pressureFingerAdded",
+    "options" : {
+      "hold" : false,
+      "native" : true,
+      "pressure" : true,
+      "tapClick" : true,
+      "tapDrag" : false,
+      "threeDrag" : false
+    },
+    "steps" : [
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 0,
+            "y" : 0
+          }
+        ],
+        "time" : 0
+      },
+      {
+        "action" : "update",
+        "points" : [
+          {
+            "id" : 1,
+            "pressure" : 0.7,
+            "x" : 0,
+            "y" : 0
+          },
+          {
+            "id" : 2,
+            "x" : 50,
+            "y" : 0
+          }
+        ],
+        "time" : 0.1
+      },
+      {
+        "action" : "update",
+        "points" : [
+
+        ],
+        "time" : 0.2
+      }
+    ]
+  },
+  {
+    "expected" : [
+      {
         "fingers" : 3,
         "kind" : "contact",
         "time" : 0,
@@ -666,7 +1318,9 @@
     ],
     "name" : "slowThreeDrag",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : true
@@ -849,7 +1503,9 @@
     ],
     "name" : "threeSwipe",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -951,7 +1607,9 @@
     ],
     "name" : "continuous-0",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -1515,7 +2173,9 @@
     ],
     "name" : "continuous-1",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -2103,7 +2763,9 @@
     ],
     "name" : "continuous-2",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -2835,7 +3497,9 @@
     ],
     "name" : "continuous-3",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -3591,7 +4255,9 @@
     ],
     "name" : "continuous-4",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -4179,7 +4845,9 @@
     ],
     "name" : "continuous-5",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -4951,7 +5619,9 @@
     ],
     "name" : "continuous-6",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -5731,7 +6401,9 @@
     ],
     "name" : "continuous-7",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -6319,7 +6991,9 @@
     ],
     "name" : "continuous-8",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -7107,7 +7781,9 @@
     ],
     "name" : "continuous-9",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -7903,7 +8579,9 @@
     ],
     "name" : "continuous-10",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -8699,7 +9377,9 @@
     ],
     "name" : "continuous-11",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -9495,7 +10175,9 @@
     ],
     "name" : "continuous-12",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -10291,7 +10973,9 @@
     ],
     "name" : "continuous-13",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -11087,7 +11771,9 @@
     ],
     "name" : "continuous-14",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -11883,7 +12569,9 @@
     ],
     "name" : "continuous-15",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -12679,7 +13367,9 @@
     ],
     "name" : "continuous-16",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -13475,7 +14165,9 @@
     ],
     "name" : "continuous-17",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -14279,7 +14971,9 @@
     ],
     "name" : "continuous-18",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
@@ -15083,7 +15777,9 @@
     ],
     "name" : "continuous-19",
     "options" : {
+      "hold" : false,
       "native" : true,
+      "pressure" : true,
       "tapClick" : true,
       "tapDrag" : false,
       "threeDrag" : false
