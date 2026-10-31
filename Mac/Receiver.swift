@@ -43,6 +43,7 @@ final class Receiver: ObservableObject {
     private var clients: [UUID: NWConnection] = [:]
     private var authenticated: UUID?
     private var dragging = false
+    private var dragClickCount: Int64 = 1
     private var lastClickTime = 0.0
     private var lastClickPosition = CGPoint.zero
     private var lastClickButton: CGMouseButton = .left
@@ -221,7 +222,15 @@ final class Receiver: ObservableObject {
         event?.setIntegerValueField(.mouseEventClickState, value: count)
         emit(event)
     }
-    private func release() { native.cancel(); cancelScroll(); pointer.reset(); stopMomentum(); if dragging { mouse(.leftMouseUp); dragging = false }; cursorPosition = nil }
+    private func release(resetCursor: Bool = true) { native.cancel(); cancelScroll(); pointer.reset(); stopMomentum(); if dragging { mouse(.leftMouseUp, count: dragClickCount); dragging = false }; if resetCursor { cursorPosition = nil } }
+    private func nextClickCount(button: CGMouseButton) -> Int64 {
+        let now = ProcessInfo.processInfo.systemUptime
+        let position = cursorPosition ?? CGEvent(source: nil)?.location ?? .zero
+        if now - lastClickTime <= NSEvent.doubleClickInterval && button == lastClickButton && hypot(position.x - lastClickPosition.x, position.y - lastClickPosition.y) < 4 { clickCount += 1 }
+        else { clickCount = 1 }
+        lastClickTime = now; lastClickPosition = position; lastClickButton = button
+        return clickCount
+    }
     private func key(_ code: CGKeyCode, flags: CGEventFlags) {
         for down in [true, false] {
             let e = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
@@ -246,17 +255,17 @@ final class Receiver: ObservableObject {
             emit(CGEvent(mouseEventSource: nil, mouseType: dragging ? .leftMouseDragged : .mouseMoved, mouseCursorPosition: point, mouseButton: .left))
         case .click:
             let right = p.fingers == 2
-            let now = ProcessInfo.processInfo.systemUptime
-            let position = cursorPosition ?? CGEvent(source: nil)?.location ?? .zero
             let button: CGMouseButton = right ? .right : .left
-            if now - lastClickTime <= NSEvent.doubleClickInterval && button == lastClickButton && hypot(position.x - lastClickPosition.x, position.y - lastClickPosition.y) < 4 {
-                clickCount += 1
-            } else { clickCount = 1 }
-            lastClickTime = now; lastClickPosition = position; lastClickButton = button
-            mouse(right ? .rightMouseDown : .leftMouseDown, button: button, count: clickCount)
-            mouse(right ? .rightMouseUp : .leftMouseUp, button: button, count: clickCount)
-        case .down: dragging = true; mouse(.leftMouseDown)
-        case .up, .reset: release()
+            let count = nextClickCount(button: button)
+            mouse(right ? .rightMouseDown : .leftMouseDown, button: button, count: count)
+            mouse(right ? .rightMouseUp : .leftMouseUp, button: button, count: count)
+        case .down:
+            guard !dragging else { return }
+            dragClickCount = nextClickCount(button: .left)
+            dragging = true; mouse(.leftMouseDown, count: dragClickCount)
+        // Pressure can release while the finger continues moving in the same contact.
+        case .up: release(resetCursor: false)
+        case .reset: release()
         case .scrollBegin:
             lastGesture = "双指滚动"
             cancelScroll(); stopMomentum(); firstScroll = true; scrolling = true

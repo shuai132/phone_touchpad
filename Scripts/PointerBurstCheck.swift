@@ -40,6 +40,32 @@ import Network
         events.removeAll(); client.send(.reset); client.send(.contact); client.send(.move, x: step, at: 200)
         try await wait { events.contains { $0.type == .mouseMoved } }
         precondition(abs(events.last!.location.x - (actual.x + step * 1.5)) < 0.001)
+        events.removeAll()
+        var engine = GestureEngine()
+        var time = 300.0
+        engine.emit = { kind, x, y, fingers in client.send(kind, x: x, y: y, fingers: fingers, at: time) }
+        for index in 0..<2 {
+            time = 300 + Double(index) * 0.1
+            engine.update([TouchPoint(id: 1, x: 0, y: 0, pressure: 0.1)], at: time)
+            time += 0.01; engine.update([TouchPoint(id: 1, x: 0, y: 0, pressure: 0.7)], at: time)
+            time += 0.01; engine.update([], at: time)
+        }
+        try await wait { events.filter { $0.type == .leftMouseUp }.count == 2 }
+        let downs = events.filter { $0.type == .leftMouseDown }.map { $0.getIntegerValueField(.mouseEventClickState) }
+        let ups = events.filter { $0.type == .leftMouseUp }.map { $0.getIntegerValueField(.mouseEventClickState) }
+        precondition(downs == [1, 2] && ups == downs, "Physical press double-click counts differ between down and up")
+        events.removeAll(); engine.cancel()
+        for (offset, pressure) in [(0.0, 0.7), (step, 0.7), (step, 0.2), (2 * step, 0.2)] {
+            time += 0.01
+            engine.update([TouchPoint(id: 1, x: offset, y: 0, pressure: pressure)], at: time)
+        }
+        time += 0.01; engine.update([], at: time)
+        try await wait { events.filter { $0.type == .mouseMoved || $0.type == .leftMouseDragged }.count == 2 }
+        let continued = events.filter { $0.type == .mouseMoved || $0.type == .leftMouseDragged }
+        precondition(continued[0].type == .leftMouseDragged && continued[1].type == .mouseMoved)
+        precondition(abs(continued[1].location.x - (actual.x + 2 * step * 1.5)) < 0.001, "Pressure release lost continued contact displacement")
         print("Queued pointer displacement, click alignment and fresh-contact anchoring passed")
+        print("Pressure engine through actual client/TLS/receiver preserved physical double-click counts")
+        print("Pressure release kept continuous pointer coordinates without ending the touch")
     }
 }
