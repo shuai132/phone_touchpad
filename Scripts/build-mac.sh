@@ -2,6 +2,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 app_dir=".build/manual/TouchpadReceiver.app"
+signing_identity="${TOUCHPAD_SIGN_IDENTITY:-}"
+signing_identity_file=".build/manual/signing-identity"
+if [[ -z "$signing_identity" && -f "$signing_identity_file" ]]; then
+    IFS= read -r signing_identity < "$signing_identity_file"
+fi
+signing_identity="${signing_identity:--}"
 mkdir -p "$app_dir/Contents/MacOS"
 swiftc -O -parse-as-library -target "$(uname -m)-apple-macosx13.0" Shared/*.swift Mac/*.swift -o "$app_dir/Contents/MacOS/TouchpadReceiver"
 cat > "$app_dir/Contents/Info.plist" <<'PLIST'
@@ -20,5 +26,8 @@ cat > "$app_dir/Contents/Info.plist" <<'PLIST'
 <key>NSBonjourServices</key><array><string>_phonetouchpad._tcp</string></array>
 </dict></plist>
 PLIST
-codesign --force --sign - "$app_dir"
+# A development identity keeps a stable signing requirement across local rebuilds.
+# Ad-hoc remains the fallback when no identity is explicitly selected.
+codesign --force --sign "$signing_identity" "$app_dir"
+printf '%s\n' "$signing_identity" > "$signing_identity_file"
 printf 'Built %s\n' "$app_dir"

@@ -14,6 +14,8 @@
 
 仅有 Command Line Tools 时，可执行 `Scripts/build-mac.sh` 构建本机架构的 Mac 应用，产物为 `.build/manual/TouchpadReceiver.app`。临时签名仅用于本地开发，正式分发仍需开发者签名和公证。
 
+Mac 本地反复更新时，建议使用已有开发证书签名：通过 `TOUCHPAD_SIGN_IDENTITY` 为 `Scripts/build-mac.sh` 显式选择证书名称或指纹。脚本在被忽略的 `.build/manual/signing-identity` 中记住选择，后续沿用；尚未选择证书时才回退到临时签名。证书失效时构建会失败，不会静默改用临时签名。临时签名重编译、改签名或更换应用副本后，辅助功能旧授权可能失效；即使开关显示开启，也应以当前应用内的授权状态为准，并在系统设置重新授权后重启、重新扫码。不要关闭系统安全保护来绕过该检查。
+
 ## Android
 
 需要 JDK 17+ 和 Android SDK 34。可在 Android Studio 打开 `android` 目录，或设置 `JAVA_HOME`、`ANDROID_HOME` 后执行 `Scripts/build-android.sh`。项目包含校验发行包 SHA-256 的 Gradle 8.9 Wrapper。

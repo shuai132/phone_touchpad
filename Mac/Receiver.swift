@@ -11,6 +11,7 @@ final class Receiver: ObservableObject {
     @Published private(set) var boundPort: NWEndpoint.Port?
     @Published private(set) var connected = false
     @Published private(set) var lastGesture = "尚未收到多指操作"
+    @Published private(set) var accessibilityGranted = false
     private let listenPort: NWEndpoint.Port
     private let advertise: Bool
     private let preferences: UserDefaults
@@ -95,10 +96,14 @@ final class Receiver: ObservableObject {
         pointerSpeed = preferences.object(forKey: "pointerSpeed") as? Double ?? 1
         pointerAcceleration = preferences.object(forKey: "pointerAcceleration") as? Bool ?? true
         naturalScrolling = preferences.object(forKey: "naturalScrolling") as? Bool ?? true
+        accessibilityGranted = permissionCheck()
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + 1, repeating: 1)
         timer.setEventHandler { [weak self] in
-            guard let self, let id = self.authenticated, let c = self.clients[id] else { return }
+            guard let self else { return }
+            let granted = self.permissionCheck()
+            if granted != self.accessibilityGranted { self.accessibilityGranted = granted }
+            guard let id = self.authenticated, let c = self.clients[id] else { return }
             if ProcessInfo.processInfo.systemUptime - self.lastReceived > 5 {
                 self.close(c, id: id); self.status = "连接中断，已释放输入"
             }
