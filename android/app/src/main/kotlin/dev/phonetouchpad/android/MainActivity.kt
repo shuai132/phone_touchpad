@@ -69,6 +69,8 @@ class MainActivity : ComponentActivity() {
             surface.engine.nativeTransforms = state.nativeTransforms
             surface.engine.tapToClick = preferences.getBoolean("tapToClick", true)
             surface.engine.tapToDrag = preferences.getBoolean("tapToDrag", false)
+            surface.engine.holdToClick = preferences.getBoolean("holdToClick", false)
+            surface.pressureClick = preferences.getBoolean("pressureClick", false)
             surface.engine.threeFingerMode = if (preferences.getBoolean("threeFingerDrag", false)) GestureEngine.ThreeFingerMode.DRAG else GestureEngine.ThreeFingerMode.SWIPE
             pad = surface
             root.addView(surface, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -129,10 +131,16 @@ class MainActivity : ComponentActivity() {
     }
     private fun settings() {
         pad?.reset(); pad?.isEnabled = false
-        val keys = arrayOf("tapToClick", "tapToDrag", "threeFingerDrag")
-        val values = booleanArrayOf(preferences.getBoolean(keys[0], true), preferences.getBoolean(keys[1], false), preferences.getBoolean(keys[2], false))
+        val keys = arrayOf("tapToClick", "tapToDrag", "threeFingerDrag", "holdToClick", "pressureClick")
+        val values = BooleanArray(keys.size) { preferences.getBoolean(keys[it], it == 0) }
         AlertDialog.Builder(this).setTitle("触控板设置")
-            .setMultiChoiceItems(arrayOf("轻点来点按", "轻点后再次按住拖移（需开启轻点）", "三指拖移（关闭时三指切换空间）"), values) { _, which, checked -> values[which] = checked }
+            .setMultiChoiceItems(arrayOf("轻点来点按", "轻点后再次按住拖移（需开启轻点）", "三指拖移（关闭时三指切换空间）", "长按模拟按压：停留后按下，抬指释放", "压力变化点击（实验性估计，因机型而异）"), values) { dialog, which, checked ->
+                values[which] = checked
+                if (checked && (which == 3 || which == 4)) {
+                    val other = if (which == 3) 4 else 3
+                    values[other] = false; (dialog as AlertDialog).listView.setItemChecked(other, false)
+                }
+            }
             .setPositiveButton("完成") { _, _ -> keys.forEachIndexed { index, name -> preferences.edit().putBoolean(name, values[index]).apply() } }
             .setOnDismissListener { render() }.show()
     }

@@ -52,10 +52,10 @@ class DeviceFlowTest {
             capture("connect.png")
         }
     }
-    private data class P(val id: Int, val x: Float, val y: Float)
+    private data class P(val id: Int, val x: Float, val y: Float, val pressure: Float = 1f)
     private fun event(action: Int, points: List<P>, downTime: Long): MotionEvent {
         val properties = points.map { MotionEvent.PointerProperties().apply { id = it.id; toolType = MotionEvent.TOOL_TYPE_FINGER } }.toTypedArray()
-        val coordinates = points.map { MotionEvent.PointerCoords().apply { x = it.x; y = it.y; pressure = 1f; size = 0.1f } }.toTypedArray()
+        val coordinates = points.map { MotionEvent.PointerCoords().apply { x = it.x; y = it.y; pressure = it.pressure; size = 0.1f } }.toTypedArray()
         return MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, points.size, properties, coordinates, 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
     }
     @Test fun nativeViewReplaysHistoryAndStaggeredLifts() {
@@ -69,7 +69,7 @@ class DeviceFlowTest {
             val density = instrumentation.targetContext.resources.displayMetrics.density
             val down = SystemClock.uptimeMillis()
             fun local(action: Int, points: List<P>) {
-                val e = event(action, points.map { P(it.id, it.x * density, it.y * density) }, down)
+                val e = event(action, points.map { P(it.id, it.x * density, it.y * density, it.pressure) }, down)
                 scenario.onActivity { view.get().dispatchTouchEvent(e) }; e.recycle()
             }
             local(MotionEvent.ACTION_DOWN, listOf(P(1, 100f, 100f)))
@@ -96,6 +96,34 @@ class DeviceFlowTest {
             packets.clear()
             local(MotionEvent.ACTION_CANCEL, listOf(P(1, 100f, 120f), P(2, 200f, 120f)))
             assertEquals(listOf("reset"), packets.map { it.kind })
+            scenario.onActivity { view.get().pressureClick = true }; packets.clear()
+            local(MotionEvent.ACTION_DOWN, listOf(P(1, 100f, 100f)))
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 100f, 100f)))
+            assertFalse(packets.any { it.kind == "down" })
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 100f, 100f, 1.7f)))
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 115f, 100f, 1.7f)))
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 115f, 100f, 1.2f)))
+            // Some devices retain their last pressure on UP; that must never re-press.
+            local(MotionEvent.ACTION_UP, listOf(P(1, 115f, 100f, 1.7f)))
+            assertEquals(1, packets.count { it.kind == "down" })
+            assertEquals(1, packets.count { it.kind == "up" })
+            assertFalse(packets.any { it.kind == "click" })
+            scenario.onActivity { view.get().reset() }; packets.clear()
+            local(MotionEvent.ACTION_DOWN, listOf(P(1, 100f, 100f)))
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 100f, 100f, 1.7f)))
+            local(MotionEvent.ACTION_CANCEL, listOf(P(1, 100f, 100f, 1.7f)))
+            val cancelledCount = packets.size
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 110f, 100f, 1.7f)))
+            assertEquals(cancelledCount, packets.size)
+            assertEquals("reset", packets.last().kind)
+            scenario.onActivity { view.get().reset(); view.get().pressureClick = false; view.get().engine.holdToClick = true; view.get().engine.tapToClick = false }; packets.clear()
+            local(MotionEvent.ACTION_DOWN, listOf(P(1, 100f, 100f)))
+            await("Native hold timer did not press") { packets.any { it.kind == "down" } }
+            local(MotionEvent.ACTION_MOVE, listOf(P(1, 115f, 100f)))
+            local(MotionEvent.ACTION_UP, listOf(P(1, 115f, 100f)))
+            assertEquals(1, packets.count { it.kind == "down" })
+            assertEquals(1, packets.count { it.kind == "up" })
+            assertFalse(packets.any { it.kind == "click" })
         }
     }
     @Test fun appConnectsAndSendsMultiTouchToMac() {

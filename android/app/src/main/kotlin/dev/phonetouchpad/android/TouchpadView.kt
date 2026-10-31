@@ -15,16 +15,24 @@ import android.view.View
 import dev.phonetouchpad.core.GestureEngine
 import dev.phonetouchpad.core.Packet
 import dev.phonetouchpad.core.TouchPoint
+import dev.phonetouchpad.core.PressureEstimate
 
 class TouchpadView(context: Context, private val output: (Packet) -> Unit) : View(context) {
     private val density = resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
     private var down = false
+    private var acceptingTouches = false
+    var pressureClick = false
+    private val pressureEstimate = PressureEstimate()
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var positions = emptyList<TouchPoint>()
     val engine = GestureEngine { packet ->
         output(packet)
-        if (packet.kind == "click" || packet.kind == "down") performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        when (packet.kind) {
+            "down" -> performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            "click" -> performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            "up" -> performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
     }
     private val tick = object : Runnable {
         override fun run() {
@@ -35,16 +43,25 @@ class TouchpadView(context: Context, private val output: (Packet) -> Unit) : Vie
     init { contentDescription = "多指触控板"; isClickable = true }
     fun reset() {
         handler.removeCallbacks(tick); engine.cancel(SystemClock.uptimeMillis() / 1000.0)
-        down = false; positions = emptyList(); invalidate()
+        down = false; acceptingTouches = false; pressureEstimate.reset(); positions = emptyList(); invalidate()
     }
     override fun onDetachedFromWindow() { reset(); super.onDetachedFromWindow() }
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isEnabled) return false
         parent?.requestDisallowInterceptTouchEvent(true)
         if (event.actionMasked == MotionEvent.ACTION_CANCEL) { reset(); return true }
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) { acceptingTouches = true; pressureEstimate.reset() }
+        if (!acceptingTouches) return true
+        fun pressure(index: Int, history: Int?): Double? {
+            if (!pressureClick || event.pointerCount != 1 || event.getToolType(index) != MotionEvent.TOOL_TYPE_FINGER) return null
+            if (history == null && event.actionMasked == MotionEvent.ACTION_UP) return 0.0
+            val raw = history?.let { event.getHistoricalPressure(index, it) } ?: event.getPressure(index)
+            val deep = history == null && Build.VERSION.SDK_INT >= 29 && event.classification == MotionEvent.CLASSIFICATION_DEEP_PRESS
+            return pressureEstimate.sample(raw.toDouble(), deep)
+        }
         fun snapshot(history: Int? = null, exclude: Int? = null): List<TouchPoint> = (0 until event.pointerCount).filter { it != exclude }.map { index ->
             TouchPoint(event.getPointerId(index), (history?.let { event.getHistoricalX(index, it) } ?: event.getX(index)) / density.toDouble(),
-                (history?.let { event.getHistoricalY(index, it) } ?: event.getY(index)) / density.toDouble())
+                (history?.let { event.getHistoricalY(index, it) } ?: event.getY(index)) / density.toDouble(), pressure(index, history))
         }
         fun time(history: Int? = null): Double = if (Build.VERSION.SDK_INT >= 34) {
             (history?.let { event.getHistoricalEventTimeNanos(it) } ?: event.eventTimeNanos) / 1e9
@@ -59,6 +76,7 @@ class TouchpadView(context: Context, private val output: (Packet) -> Unit) : Vie
             engine.update(positions, time())
         }
         down = positions.isNotEmpty()
+        if (event.actionMasked == MotionEvent.ACTION_UP) acceptingTouches = false
         handler.removeCallbacks(tick)
         if (down || engine.needsClock) handler.postDelayed(tick, 16)
         invalidate(); return true
