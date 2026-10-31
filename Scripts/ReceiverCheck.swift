@@ -27,6 +27,7 @@ import Network
         let receiver = Receiver(port: .any, advertise: false, preferences: preferences, postEvent: { events.append($0) })
         defer { receiver.stop() }
         receiver.pointerAcceleration = false; receiver.pointerSpeed = 1
+        receiver.zoomSensitivity = 1
         try await wait("Listener did not start") { receiver.boundPort != nil }
         let port = receiver.boundPort!
         let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: port)

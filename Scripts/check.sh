@@ -30,6 +30,8 @@ swiftc -typecheck Shared/*.swift Mac/*.swift
 swiftc -typecheck Shared/*.swift iOS/Connection.swift
 swiftc Shared/*.swift iOS/Connection.swift Mac/Receiver.swift Mac/NativeGestures.swift Scripts/PointerBurstCheck.swift -o "$check_dir/pointerburst"
 "$check_dir/pointerburst"
+swiftc Shared/*.swift iOS/Connection.swift Mac/Receiver.swift Mac/NativeGestures.swift Scripts/SensitivityCheck.swift -o "$check_dir/sensitivity"
+"$check_dir/sensitivity"
 swiftc Shared/*.swift iOS/Connection.swift Mac/Receiver.swift Mac/NativeGestures.swift Scripts/PairingRejectionCheck.swift -o "$check_dir/rejections"
 "$check_dir/rejections"
 swiftc Shared/*.swift iOS/Connection.swift Scripts/ConnectionCheck.swift -o "$check_dir/connection"

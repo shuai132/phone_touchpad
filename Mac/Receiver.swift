@@ -32,6 +32,12 @@ final class Receiver: ObservableObject {
     @Published var naturalScrolling: Bool {
         didSet { preferences.set(naturalScrolling, forKey: "naturalScrolling") }
     }
+    @Published var scrollSensitivity: Double {
+        didSet { preferences.set(scrollSensitivity, forKey: "scrollSensitivity"); stopMomentum() }
+    }
+    @Published var zoomSensitivity: Double {
+        didSet { preferences.set(zoomSensitivity, forKey: "zoomSensitivity") }
+    }
     private var pointer = PointerMotion()
     // Posted events can still be queued when the next touch sample arrives.
     // Accumulate their destination instead of rereading a lagging OS position.
@@ -97,6 +103,10 @@ final class Receiver: ObservableObject {
         pointerSpeed = preferences.object(forKey: "pointerSpeed") as? Double ?? 1
         pointerAcceleration = preferences.object(forKey: "pointerAcceleration") as? Bool ?? true
         naturalScrolling = preferences.object(forKey: "naturalScrolling") as? Bool ?? true
+        let savedScroll = preferences.object(forKey: "scrollSensitivity") as? Double ?? 1
+        let savedZoom = preferences.object(forKey: "zoomSensitivity") as? Double ?? 0.35
+        scrollSensitivity = savedScroll.isFinite ? min(max(savedScroll, 0.2), 3) : 1
+        zoomSensitivity = savedZoom.isFinite ? min(max(savedZoom, 0.1), 1.5) : 0.35
         accessibilityGranted = permissionCheck()
         recordPermissionState()
         let timer = DispatchSource.makeTimerSource(queue: .main)
@@ -272,14 +282,16 @@ final class Receiver: ObservableObject {
         case .scroll:
             guard scrolling else { return }
             let direction = naturalScrolling ? 1.0 : -1.0
-            momentum.sample(x: p.x * direction, y: p.y * direction, at: p.time ?? ProcessInfo.processInfo.systemUptime)
-            scroll(x: p.x * direction, y: p.y * direction, phase: firstScroll ? 1 : 2); firstScroll = false
+            let gain = scrollSensitivity.isFinite ? min(max(scrollSensitivity, 0.2), 3) : 1
+            let x = p.x * direction * gain, y = p.y * direction * gain
+            momentum.sample(x: x, y: y, at: p.time ?? ProcessInfo.processInfo.systemUptime)
+            scroll(x: x, y: y, phase: firstScroll ? 1 : 2); firstScroll = false
         case .scrollEnd:
             guard scrolling else { return }
             scroll(x: 0, y: 0, phase: 4); scrolling = false; startMomentum(at: p.time ?? ProcessInfo.processInfo.systemUptime)
         case .smartZoom: lastGesture = "双指双击智能缩放"; stopMomentum(); native.send(.smartZoom, phase: .none)
         case .zoomBegin: lastGesture = "双指捏合缩放"; cancelScroll(); stopMomentum(); native.send(.zoom, phase: .began)
-        case .zoom: native.send(.zoom, value: min(max(p.x, -0.95), 3), phase: .changed)
+        case .zoom: native.send(.zoom, value: NativeGestures.scaledMagnification(p.x, sensitivity: zoomSensitivity), phase: .changed)
         case .zoomEnd: native.send(.zoom, phase: .ended)
         case .rotateBegin: lastGesture = "双指旋转"; cancelScroll(); stopMomentum(); native.send(.rotate, phase: .began)
         case .rotate: native.send(.rotate, value: min(max(p.x, -180), 180), phase: .changed)

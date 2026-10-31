@@ -11,6 +11,12 @@ struct NativeGestures {
     init(postEvent: @escaping (CGEvent) -> Void = { $0.post(tap: .cghidEventTap) }) { self.postEvent = postEvent }
     private func post(_ event: CGEvent?) { if let event { postEvent(event) } }
     static let supported = checkEncoding()
+    static func scaledMagnification(_ delta: Double, sensitivity: Double) -> Double {
+        guard delta.isFinite else { return 0 }
+        let gain = sensitivity.isFinite ? min(max(sensitivity, 0.1), 1.5) : 0.35
+        // Scale logarithmic distance so the result is independent of sample frequency.
+        return expm1(log1p(min(max(delta, -0.95), 3)) * gain)
+    }
 
     static func event(kind: Kind, value: Double = 0, phase: Phase, location: CGPoint? = nil) -> CGEvent? {
         guard value.isFinite, let event = CGEvent(source: nil),
