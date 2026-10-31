@@ -24,7 +24,7 @@ Mac 本地反复更新时，建议使用已有开发证书签名：通过 `TOUCH
 
 Android 实现了二维码扫描、NSD 自动发现、手动连接、与 iOS 对应的手势引擎、设置、触觉反馈、心跳和后台断开。扫描与触摸处理接入原生 Activity/View，读取 MotionEvent 历史样本；Android 14+ 使用纳秒采样时间。扫码、NSD 跨设备发现、实际触感与真实设备生命周期仍需真机测试。
 
-Kotlin 核心对照 `Tests/Fixtures/gestures.json` 中由 Swift 引擎生成的 29 组轨迹，核对动作、坐标增量、手指数、采样时间和协议版本。`Scripts/check-gesture-fixtures.sh` 防止 Swift 实现变化后夹具未同步。
+Kotlin 核心对照 `Tests/Fixtures/gestures.json` 中由 Swift 引擎生成的 37 组轨迹，核对动作、坐标增量、手指数、采样时间和协议版本。`Scripts/check-gesture-fixtures.sh` 防止 Swift 实现变化后夹具未同步。
 
 `Scripts/check-android-interop.sh` 使用真实 Swift 接收端和 Android 应用所用的同一 Kotlin 传输/会话代码，在 JVM 上验证 TLS-PSK 配对、心跳、错误密钥、版本拒绝、已有会话保护，以及服务器断开后的客户端清理。Mac 输出只记录在内存，不操作桌面。该检查已通过，但不等同于 Android 设备上的网络或 UI 验收。普通 `:core:test` 没有运行中的接收端时会跳过此项实时互通测试。
 
@@ -35,6 +35,7 @@ Kotlin 核心对照 `Tests/Fixtures/gestures.json` 中由 Swift 引擎生成的 
 - 单指移动、轻点左键、双指轻点右键；连续轻点带系统双击/多击计数。
 - 双指像素滚动，包含滚动阶段和速度衰减惯性；新触摸停止惯性。
 - 实验性原生双指捏合与旋转，可同时发生；双指双击发送智能缩放。启用后双指单击右键延迟约 280 ms，以区分双击。
+- 支持按压点击第一段：真实压感设备达到门槛时按下左键，减压或抬指释放；按住移动可拖移，连续按压保留系统双击计数。没有压力数据时可选约 0.35 秒的长按模拟，默认关闭。
 - 可选轻点拖移：轻点后在附近再次按住或移动，抬指释放；快速第二次轻点保持双击。可关闭轻点并使用左右键按钮。
 - 可选三指拖移，抬起任一手指释放；默认三指或四指滑动发送 Control + 方向键，依赖 Mac 系统快捷键设置。
 - 配对失败显示 Mac 忙、辅助功能未授权、版本不兼容等具体原因；第二个客户端不能抢占现有连接。
@@ -72,6 +73,16 @@ Mac/iOS 使用系统 Network.framework，Android 使用 [Bouncy Castle 轻量 TL
 
 系统 API 依据：[Apple TLS 安全选项](https://developer.apple.com/documentation/network/security-options)、[向 Network.framework 迁移的技术说明](https://developer.apple.com/documentation/technotes/tn3213-moving-from-multipeer-connectivity-to-network-framework)。
 
+## 按压力度与硬件限制
+
+在手机设置的“按压与拖移”中，iOS 会显示当前是否提供真实手指压感。仅在系统报告 `forceTouchCapability` 可用时读取 `UITouch.force / maximumPossibleForce`，包括合并样本中的压力峰值；不把触摸面积或 Haptic Touch 持续时间当成真实力度。默认启用真实压力点击，硬件不支持时此项不可用，可自行开启“长按模拟按压”。长按停留约 0.35 秒后按下左键，移动拖移，抬指释放；正常移动不会因持续时间较长自动变成按下。
+
+Android 默认关闭“压力变化点击”。用户可选择实验性压力变化估计，按同一次触摸的起始压力计算相对增幅，并参考系统 `DEEP_PRESS` 分类；该分类和 `MotionEvent.pressure` 都不保证来自测力硬件。常见的恒定 1.0 值不会被当成重按。压力估计与长按模拟是二选一；机型无法提供可靠变化时应使用长按模拟，不能称为真实压感。
+
+两端按下/释放采用滞回，减压时先保留最后一段拖移再释放，抬指事件不会用残留压力重新按下；加指、取消、后台和断连也会释放。按下与轻点采用不同触觉反馈。此功能是普通鼠标点击/按住的第一段，尚未注入第二段 Force Click 的原生压力事件，也不宣称已经实现查词、预览或等效触觉硬件。
+
+依据：[UIKit 压力值](https://developer.apple.com/documentation/uikit/uitouch/force)、[UIKit 压力能力](https://developer.apple.com/documentation/uikit/uiforcetouchcapability)、[Android MotionEvent](https://developer.android.com/reference/android/view/MotionEvent)、[Apple Force Click 说明](https://support.apple.com/102309)。当前真实压力硬件路径已完成逻辑测试与原生适配编译，但没有在支持手指真实压感的手机上验收；Android 原生 MotionEvent 测试使用模拟器构造压力，不是测力传感器实测。
+
 ## 与 Apple 触控板的差距
 
 尚未实现手掌抑制和设备记忆；Android 客户端已有调试构建并通过模拟器联调，但真机验收未完成。原生捏合/旋转和智能缩放已接入实验性路径，但尚未完成手机到目标应用的真机验收。指针加速、滚动惯性、三指拖移和多击计数需要真机调校；当前不能称为完整 Magic Trackpad 复刻。
@@ -108,7 +119,7 @@ Mac/iOS 使用系统 Network.framework，Android 使用 [Bouncy Castle 轻量 TL
 
 当前应用协议版本为 1。Mac 在接收任何输入前检查版本及配对状态，拒绝回复使用 `kind: rejected` 与稳定的原因代码，iOS 与 Android 原生端均使用该协议。
 
-Android 构建、29 组跨语言轨迹检查和 JVM 到 Mac 的加密互通检查已通过，Android Lint 无错误。仍有国际化、原生 API 兼容分支等警告，以及 Bouncy Castle JAR 中未使用的 JSSE 信任管理器代码触发的静态警告；本客户端只启用 PSK 套件并验证协商版本/套件，不创建 X.509 信任管理器。Android 14 模拟器 UI 与网络联调已通过，真实相机和手机仍待验收。
+Android 构建、37 组跨语言轨迹检查和 JVM 到 Mac 的加密互通检查已通过，Android Lint 无错误。仍有国际化、原生 API 兼容分支等警告，以及 Bouncy Castle JAR 中未使用的 JSSE 信任管理器代码触发的静态警告；本客户端只启用 PSK 套件并验证协商版本/套件，不创建 X.509 信任管理器。Android 14 模拟器 UI 与网络联调已通过，真实相机和手机仍待验收。
 
 ## 本机延迟基线
 
