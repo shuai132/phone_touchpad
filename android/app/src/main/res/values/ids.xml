@@ -1,0 +1,6 @@
+<resources>
+    <item name="connection_status" type="id" />
+    <item name="mac_host" type="id" />
+    <item name="pairing_key" type="id" />
+    <item name="touchpad_surface" type="id" />
+</resources>
