@@ -54,12 +54,17 @@ import Security
 
 @main struct ConnectionCheck {
     @MainActor static func main() async throws {
+        let invalid = Connection(discover: false)
+        invalid.connect(route: .localNetwork(host: "  "), code: String(repeating: "ab", count: 32))
+        precondition(!invalid.connected && invalid.status == "连接地址或端口无效")
+        do { _ = try ConnectionRoute.forwardedTCP(host: "127.0.0.1", port: 0).endpoint(); preconditionFailure("Port zero accepted") }
+        catch {}
         let peer = try TestPeer()
         defer { peer.stop() }
         peer.listener.start(queue: .main)
         try await wait { if case .ready = peer.listener.state { return true }; return false }
         let client = Connection(discover: false)
-        client.connect(endpoint: .hostPort(host: "127.0.0.1", port: peer.listener.port!), code: String(repeating: "ab", count: 32))
+        client.connect(route: .forwardedTCP(host: "127.0.0.1", port: peer.listener.port!.rawValue), code: String(repeating: "ab", count: 32))
         try await wait { client.connected }
         precondition(client.nativeGestures)
         try await wait { client.latency != nil }

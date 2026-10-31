@@ -53,7 +53,11 @@ import Combine
     }
     private var buffer = PacketBuffer()
     func connect(host: String, code: String) {
-        connect(endpoint: .hostPort(host: NWEndpoint.Host(host), port: BonjourPort), code: code)
+        connect(route: .localNetwork(host: host), code: code)
+    }
+    func connect(route: ConnectionRoute, code: String) {
+        do { connect(endpoint: try route.endpoint(), code: code) }
+        catch { disconnect(); status = "连接地址或端口无效" }
     }
     func connect(endpoint: NWEndpoint, code: String) {
         disconnect()
@@ -129,4 +133,3 @@ import Combine
         connection?.cancel(); connection = nil; connected = false; buffer = PacketBuffer(); status = "未连接"
     }
 }
-private let BonjourPort = NWEndpoint.Port(rawValue: 49271)!
