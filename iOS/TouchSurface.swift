@@ -7,6 +7,8 @@ struct TouchSurface: UIViewRepresentable {
     var tapToDrag: Bool
     var active: Bool
     var nativeTransforms: Bool
+    var pressureToClick: Bool
+    var holdToClick: Bool
     var emit: (InputPacket.Kind, Double, Double, Int, Double) -> Void
     func makeUIView(context: Context) -> PadView { PadView() }
     func updateUIView(_ view: PadView, context: Context) {
@@ -14,11 +16,13 @@ struct TouchSurface: UIViewRepresentable {
         view.engine.nativeTransforms = nativeTransforms
         view.engine.tapToClick = tapToClick
         view.engine.tapToDrag = tapToDrag
+        view.engine.pressureToClick = pressureToClick
+        view.engine.holdToClick = holdToClick
         view.engine.threeFingerMode = threeFingerDrag ? .drag : .swipe
         view.engine.emit = { [weak view] kind, x, y, fingers in
             view?.recordAction(kind)
             emit(kind, x, y, fingers, view?.sampleTime ?? ProcessInfo.processInfo.systemUptime)
-            if kind == .click || kind == .down { view?.clickFeedback() }
+            if kind == .click || kind == .down || kind == .up { view?.clickFeedback(pressed: kind == .down) }
         }
     }
     static func dismantleUIView(_ view: PadView, coordinator: ()) { view.reset() }
@@ -30,7 +34,11 @@ final class PadView: UIView {
     private var nextID = 0
     private var lastTouchFrame: TouchFrame?
     private let feedback = UIImpactFeedbackGenerator(style: .light)
-    func clickFeedback() { feedback.impactOccurred(); feedback.prepare() }
+    private let pressFeedback = UIImpactFeedbackGenerator(style: .medium)
+    func clickFeedback(pressed: Bool = false) {
+        let generator = pressed ? pressFeedback : feedback
+        generator.impactOccurred(); generator.prepare()
+    }
     private var holdTimer: Timer?
     private var active = false
     private var previousSize: CGSize?
@@ -94,8 +102,15 @@ final class PadView: UIView {
     private func points() -> [TouchPoint] {
         touches.values.map { id, touch in
             let p = touch.location(in: self)
-            return TouchPoint(id: id, x: p.x, y: p.y)
+            return TouchPoint(id: id, x: p.x, y: p.y, pressure: pressure(of: touch))
         }
+    }
+    private func pressure(of touch: UITouch) -> Double? {
+        guard engine.pressureToClick, traitCollection.forceTouchCapability == .available,
+              touch.type == .direct, touch.maximumPossibleForce > 0 else { return nil }
+        if touch.phase == .ended || touch.phase == .cancelled { return 0 }
+        let value = Double(touch.force / touch.maximumPossibleForce)
+        return value.isFinite ? min(max(value, 0), 1) : nil
     }
     private func consume(_ frame: TouchFrame) {
         #if DEBUG
@@ -110,7 +125,7 @@ final class PadView: UIView {
         let trajectories = touches.values.map { id, touch in
             TouchTrajectory(id: id, samples: (event?.coalescedTouches(for: touch) ?? []).map { sample in
                 let p = sample.location(in: self)
-                return TouchSample(time: sample.timestamp, x: p.x, y: p.y)
+                return TouchSample(time: sample.timestamp, x: p.x, y: p.y, pressure: pressure(of: sample))
             })
         }
         let eventTime = event?.timestamp ?? ProcessInfo.processInfo.systemUptime
@@ -125,7 +140,7 @@ final class PadView: UIView {
             diagnosticStart = event?.timestamp ?? ProcessInfo.processInfo.systemUptime
         }
         #endif
-        feedback.prepare()
+        feedback.prepare(); pressFeedback.prepare()
         for touch in new { nextID += 1; touches[ObjectIdentifier(touch)] = (nextID, touch) }
         snapshot(at: event?.timestamp ?? ProcessInfo.processInfo.systemUptime)
         startHoldTimer()

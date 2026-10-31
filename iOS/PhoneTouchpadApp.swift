@@ -11,9 +11,12 @@ struct ContentView: View {
     @State private var code = ""
     @State private var showingScanner = false
     @State private var showingSettings = false
+    @State private var forceAvailable = false
     @AppStorage("tapToClick") private var tapToClick = true
     @AppStorage("tapToDrag") private var tapToDrag = false
     @AppStorage("threeFingerDrag") private var threeFingerDrag = false
+    @AppStorage("pressureToClick") private var pressureToClick = true
+    @AppStorage("holdToClick") private var holdToClick = false
     @Environment(\.scenePhase) private var phase
     var body: some View {
         VStack(spacing: 12) {
@@ -29,7 +32,7 @@ struct ContentView: View {
                 }
             }.padding(.horizontal)
             if connection.connected {
-                TouchSurface(threeFingerDrag: threeFingerDrag, tapToClick: tapToClick, tapToDrag: tapToDrag, active: !showingSettings && phase == .active, nativeTransforms: connection.nativeGestures) { kind, x, y, fingers, time in
+                TouchSurface(threeFingerDrag: threeFingerDrag, tapToClick: tapToClick, tapToDrag: tapToDrag, active: !showingSettings && phase == .active, nativeTransforms: connection.nativeGestures, pressureToClick: pressureToClick, holdToClick: holdToClick) { kind, x, y, fingers, time in
                     connection.send(kind, x: x, y: y, fingers: fingers, at: time)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -83,6 +86,12 @@ struct ContentView: View {
                         Toggle("轻点后再次按住拖移", isOn: $tapToDrag).disabled(!tapToClick)
                         Text("启用拖移后，轻点一次，在同一位置附近再次按住或移动，抬指结束拖移。关闭轻点时，可使用触控板下方的左右键按钮。").font(.caption).foregroundStyle(.secondary)
                     }
+                    Section("按压与拖移") {
+                        Text(forceAvailable ? "当前设备支持真实 3D Touch 压力" : "当前设备未提供手指真实压感").font(.caption).foregroundStyle(.secondary)
+                        Toggle("压力点击（需真实压感硬件）", isOn: $pressureToClick).disabled(!forceAvailable)
+                        Toggle("长按模拟按压", isOn: $holdToClick)
+                        Text("支持 3D Touch 的设备使用真实压力：加压按下，减压或抬指释放，按住移动可拖移。其他设备可开启长按模拟，单指停留约 0.35 秒后按下，抬指释放；这不是力度检测，也不是第二段 Force Click。").font(.caption).foregroundStyle(.secondary)
+                    }
                     Section("多指") {
                         if connection.connected {
                             Text(connection.nativeGestures ? "双指捏合、旋转及双指双击智能缩放已连接（实验性）" : "此 Mac 未提供原生捏合与旋转支持").font(.caption).foregroundStyle(.secondary)
@@ -105,6 +114,8 @@ struct ContentView: View {
                 .navigationTitle("扫描配对二维码").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { showingScanner = false } } }
             }
+        }.onAppear {
+            forceAvailable = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.traitCollection.forceTouchCapability == .available
         }.onChange(of: phase) { value in
             if value != .active { connection.send(.reset); connection.disconnect() }
             UIApplication.shared.isIdleTimerDisabled = value == .active && connection.connected
